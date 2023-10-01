@@ -63,5 +63,7 @@ if (!projectPath) {
 
 walkDir(projectPath);
 
-console.log(components);
-console.log(hooks);
+const resultsFilePath = path.join(__dirname, "../", "treeclimbresults.json");
+fs.writeFileSync(resultsFilePath, JSON.stringify({ components, hooks }));
+
+console.info("Results written to treeclimbresults.json!");

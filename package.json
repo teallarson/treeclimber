@@ -17,6 +17,7 @@
     "typescript": "^5.2.2"
   },
   "dependencies": {
-    "@babel/traverse": "^7.23.0"
+    "@babel/traverse": "^7.23.0",
+    "react-d3-tree": "^3.6.1"
   }
 }
