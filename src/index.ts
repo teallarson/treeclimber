@@ -12,7 +12,14 @@ interface NodeInfo {
 const components: Record<string, NodeInfo> = {};
 const hooks: Record<string, NodeInfo> = {};
 
-function analyzeFile(filePath: string) {
+/**
+ * TDOD:
+ * - should work from within the current project
+ *   - how should it find the right dir if it's inside the project?
+ * - make data the right shape for d3.
+ */
+
+const analyzeFile = (filePath: string) => {
   const code = fs.readFileSync(filePath, "utf-8");
   const ast = parser.parse(code, {
     sourceType: "module",
@@ -37,9 +44,9 @@ function analyzeFile(filePath: string) {
       }
     },
   });
-}
+};
 
-function walkDir(dir: string) {
+const walkDir = (dir: string) => {
   const files = fs.readdirSync(dir);
 
   for (const file of files) {
@@ -52,7 +59,7 @@ function walkDir(dir: string) {
       analyzeFile(filePath);
     }
   }
-}
+};
 
 const projectPath = process.argv[2];
 
