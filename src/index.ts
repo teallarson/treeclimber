@@ -4,12 +4,13 @@ import * as parser from "@babel/parser";
 import traverse from "@babel/traverse";
 import * as t from "@babel/types";
 
-interface ComponentInfo {
+interface NodeInfo {
   defined: string[];
   used: string[];
 }
 
-const components: Record<string, ComponentInfo> = {};
+const components: Record<string, NodeInfo> = {};
+const hooks: Record<string, NodeInfo> = {};
 
 function analyzeFile(filePath: string) {
   const code = fs.readFileSync(filePath, "utf-8");
@@ -29,7 +30,10 @@ function analyzeFile(filePath: string) {
     CallExpression(path) {
       const callee = path.node.callee;
       if (t.isIdentifier(callee) && callee.name.startsWith("use")) {
-        console.log(`Found a hook: ${callee.name}`);
+        if (!hooks[callee.name]) {
+          hooks[callee.name] = { defined: [], used: [] };
+        }
+        hooks[callee.name].used.push(filePath);
       }
     },
   });
@@ -60,3 +64,4 @@ if (!projectPath) {
 walkDir(projectPath);
 
 console.log(components);
+console.log(hooks);
