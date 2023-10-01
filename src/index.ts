@@ -1,31 +1,62 @@
-import { parse } from "@babel/parser";
+import * as fs from "fs";
+import * as path from "path";
+import * as parser from "@babel/parser";
 import traverse from "@babel/traverse";
+import * as t from "@babel/types";
 
-const code = `
-import React from 'react';
-import MyComponent from './MyComponent';
-const Example = () => {
-  return <MyComponent />;
-};
-`;
+interface ComponentInfo {
+  defined: string[];
+  used: string[];
+}
 
-const ast = parse(code, {
-  sourceType: "module",
-  plugins: ["jsx"],
-});
+const components: Record<string, ComponentInfo> = {};
 
-const componentUsages: string[] = [];
+function analyzeFile(filePath: string) {
+  const code = fs.readFileSync(filePath, "utf-8");
+  const ast = parser.parse(code, {
+    sourceType: "module",
+    plugins: ["jsx", "typescript"],
+  });
 
-traverse(ast, {
-  JSXIdentifier(path) {
-    if (
-      path.node.name &&
-      !Array.isArray(path?.container) &&
-      path?.container?.type === "JSXOpeningElement"
-    ) {
-      componentUsages.push(path.node.name);
+  traverse(ast, {
+    JSXIdentifier(path) {
+      const name = path.node.name;
+      if (!components[name]) {
+        components[name] = { defined: [], used: [] };
+      }
+      components[name].used.push(filePath);
+    },
+    CallExpression(path) {
+      const callee = path.node.callee;
+      if (t.isIdentifier(callee) && callee.name.startsWith("use")) {
+        console.log(`Found a hook: ${callee.name}`);
+      }
+    },
+  });
+}
+
+function walkDir(dir: string) {
+  const files = fs.readdirSync(dir);
+
+  for (const file of files) {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+
+    if (stat.isDirectory()) {
+      walkDir(filePath);
+    } else if (stat.isFile() && filePath.endsWith(".tsx")) {
+      analyzeFile(filePath);
     }
-  },
-});
+  }
+}
 
-console.log(componentUsages); // Will log ['MyComponent']
+const projectPath = process.argv[2];
+
+if (!projectPath) {
+  console.error("Please provide a project path.");
+  process.exit(1);
+}
+
+walkDir(projectPath);
+
+console.log(components);
