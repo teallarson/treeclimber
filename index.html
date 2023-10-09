@@ -1,115 +1,49 @@
-<-- thanks to d3 n00b for the example found here upon which this is heavily
-based: https://gist.github.com/d3noob/8329447 ->
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="utf-8" />
-
-    <title>Collapsible Tree Example</title>
-
+    <meta charset="UTF-8" />
+    <title>D3 Visualization</title>
+    <script src="https://d3js.org/d3.v5.min.js"></script>
     <style>
-      .node circle {
-        fill: #fff;
-        stroke: steelblue;
-        stroke-width: 3px;
+      .links line {
+        stroke: #999;
+        stroke-opacity: 0.6;
       }
 
-      .node text {
-        font: 12px sans-serif;
-      }
-
-      .link {
-        fill: none;
-        stroke: #ccc;
-        stroke-width: 2px;
+      .nodes circle {
+        stroke: #fff;
+        stroke-width: 1.5;
       }
     </style>
   </head>
-
   <body>
-    <!-- load the d3.js library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/3.5.17/d3.min.js"></script>
-
+    <svg id="d3example"></svg>
     <script>
-      // ************** Generate the tree diagram	 *****************
-      var margin = { top: 20, right: 120, bottom: 20, left: 120 },
-        width = 960 - margin.right - margin.left,
-        height = 500 - margin.top - margin.bottom;
-
-      var i = 0;
-
-      var tree = d3.layout.tree().size([height, width]);
-
-      var diagonal = d3.svg.diagonal().projection(function (d) {
-        return [d.y, d.x];
-      });
-
+      const width = 800;
+      const height = 800;
       var svg = d3
-        .select("body")
+        .select("#d3example")
         .append("svg")
-        .attr("width", width + margin.right + margin.left)
-        .attr("height", height + margin.top + margin.bottom)
-        .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+        .attr("width", width)
+        .attr("height", height);
 
-      // load the external data
-      d3.json("treeData.json", function (error, treeData) {
-        root = treeData[0];
-        update(root);
-      });
-
-      function update(source) {
-        // Compute the new tree layout.
-        var nodes = tree.nodes(root).reverse(),
-          links = tree.links(nodes);
-
-        // Normalize for fixed-depth.
-        nodes.forEach(function (d) {
-          d.y = d.depth * 180;
-        });
-
-        // Declare the nodes…
-        var node = svg.selectAll("g.node").data(nodes, function (d) {
-          return d.id || (d.id = ++i);
-        });
-
-        // Enter the nodes.
-        var nodeEnter = node
-          .enter()
-          .append("g")
-          .attr("class", "node")
-          .attr("transform", function (d) {
-            return "translate(" + d.y + "," + d.x + ")";
-          });
-
-        nodeEnter.append("circle").attr("r", 10).style("fill", "#fff");
-
-        nodeEnter
-          .append("text")
-          .attr("x", function (d) {
-            return d.children || d._children ? -13 : 13;
-          })
-          .attr("dy", ".35em")
-          .attr("text-anchor", function (d) {
-            return d.children || d._children ? "end" : "start";
-          })
-          .text(function (d) {
-            return d.name;
-          })
-          .style("fill-opacity", 1);
-
-        // Declare the links…
-        var link = svg.selectAll("path.link").data(links, function (d) {
-          return d.target.id;
-        });
-
-        // Enter the links.
-        link
-          .enter()
-          .insert("path", "g")
-          .attr("class", "link")
-          .attr("d", diagonal);
-      }
+      var exampleData = [
+        { name: "A" },
+        { name: "B" },
+        { name: "C" },
+        { name: "D" },
+      ];
+      var node = svg.append("g").selectAll("nodes").data(exampleData).enter();
+      var circles = node
+        .append("circle")
+        .attr("cx", () => {
+          return Math.random() * width;
+        })
+        .attr("cy", () => {
+          return Math.random() * height;
+        })
+        .attr("r", 40)
+        .style("fill", "rgb(239, 192, 80)");
     </script>
   </body>
 </html>
