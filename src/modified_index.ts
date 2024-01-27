@@ -11,6 +11,7 @@ interface NodeInfo {
 
 const components: Record<string, NodeInfo> = {};
 const hooks: Record<string, NodeInfo> = {};
+const files: Record<string, NodeInfo> = {};
 
 /**
  * TDOD:
@@ -41,6 +42,13 @@ const analyzeFile = (filePath: string) => {
     return;
   }
 
+  // Add the file as a node
+  const fileName = path.basename(filePath);
+  if (!files[fileName]) {
+    files[fileName] = { defined: [], used: [] };
+  }
+  files[fileName].used.push(filePath);
+
   // Traverse the AST to find component usages
   traverse(ast, {
     JSXIdentifier(path) {
@@ -54,35 +62,11 @@ const analyzeFile = (filePath: string) => {
         if (!components[componentName]) {
           components[componentName] = { defined: [], used: [] };
         }
-        components[componentName].used.push(filePath);
-      }
-
-      if (
-        path.node.name &&
-        path.container &&
-        !Array.isArray(path.container) &&
-        path.container.type === "JSXOpeningElement"
-      ) {
-        let componentName = path.node.name;
-        if (!components[componentName]) {
-          components[componentName] = { defined: [], used: [] };
-        }
-        components[componentName].used.push(filePath); // Pushing filePath here, but you can adjust to push anything else you want.
+        components[componentName].used.push(fileName);
       }
     },
 
-    // Optionally, include logic for hooks if you are interested in those as well.
     CallExpression(path) {
-      if (
-        t.isIdentifier(path.node.callee) &&
-        "name" in path.node.callee &&
-        /use[A-Z]\w*/.test(path.node.callee.name)
-      ) {
-        let hookName = path.node.callee.name;
-        if (!hooks[hookName]) {
-          hooks[hookName] = { defined: [], used: [] };
-        }
-      }
       if (
         t.isIdentifier(path.node.callee) &&
         "name" in path.node.callee &&
@@ -130,26 +114,43 @@ walkDir(projectPath);
  *  }
  */
 
+interface Link {
+  source: string;
+  target: string;
+}
+
 const parseResults = (results: Record<string, NodeInfo>) => {
-  const nodes = [];
-  const links = [];
+  const nodes = [
+    ...Object.keys(components).map((componentName) => ({ id: componentName, group: 1 })),
+    ...Object.keys(files).map((fileName) => ({ id: fileName, group: 2 })),
+  ];
+
+  const links = new Set(); 
+
   for (const [key, value] of Object.entries(results)) {
     const { used } = value;
-    const node = { id: key, group: 1 };
-    const linksTemp = used.map((usedPath) => ({
-      source: key,
-      target: usedPath, // Modify to use usedPath instead of self-referencing key
-    }));
-    nodes.push(node);
-    links.push(linksTemp);
-  }
-  const graphDataFilePath = path.join(
-    __dirname,
-    "../",
-    "treeclimbgraphdata.json"
-  );
 
-  fs.writeFileSync(graphDataFilePath, JSON.stringify({ nodes, links }));
+    if (used.length > 0) {
+      const node = { id: key, group: 1 };
+      nodes.push(node);
+
+      for (const usedPath of used) {
+        const link = {
+          source: key,
+          target: usedPath,
+        };
+        links.add(JSON.stringify(link));
+      }
+    }
+  }
+
+  // Convert the Set back to an array
+  const uniqueLinks = Array.from(links).map((linkStr) => JSON.parse(linkStr as string));
+
+  const graphDataFilePath = path.join(__dirname, "../", "treeclimbgraphdata.json");
+
+  fs.writeFileSync(graphDataFilePath, JSON.stringify({ nodes, links: uniqueLinks }));
+  console.info("Graph data written to treeclimbgraphdata.json!");
 };
 
 const resultsFilePath = path.join(__dirname, "../", "treeclimbresults.json");

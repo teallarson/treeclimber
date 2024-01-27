@@ -1,49 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <title>D3 Visualization</title>
-    <script src="https://d3js.org/d3.v5.min.js"></script>
-    <style>
-      .links line {
-        stroke: #999;
-        stroke-opacity: 0.6;
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <title>Network Graph Example</title>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .node {
+      fill: #1f77b4; 
+    }
+
+    .link {
+      stroke: #999; 
+    }
+  .tooltip {
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8); 
+    color: white; 
+    padding: 5px; 
+    border-radius: 5px;
+    opacity: 0; 
+  }
+
+  .focused {
+  stroke: lime; 
+  stroke-width: 2;
+  fill: lime; 
+}
+
+  </style>
+</head>
+<body style="margin: 0;">
+    <div style="width: 100vw; height: 100vh;">
+      <svg id="network-graph" width="100%" height="100%"></svg> 
+    </div> 
+    <div id="tooltip" class="tooltip" style="position: absolute; opacity: 0;">
+    </div>
+  
+  <script>
+    console.log('D3.js code is running');
+    d3.json('./treeclimbgraphdata.json').then((data) => {
+      console.log('Data loaded:', data);
+      // Select the container element
+      const container = d3.select('#network-graph');
+
+      // Create a D3 force simulation for the network layout
+      const simulation = d3.forceSimulation(data.nodes)
+        .force('link', d3.forceLink(data.links).id((d) => d.id))
+        .force('charge', d3.forceManyBody())
+        .force('center', d3.forceCenter(container.node().clientWidth / 2, container.node().clientHeight / 2));
+
+      // Create SVG elements for nodes and links
+      const link = container.append('g')
+        .selectAll('line')
+        .data(data.links)
+        .enter()
+        .append('line')
+        .attr('class', 'link');
+
+        // Select nodes and add click event listener
+      const node = container
+        .selectAll('circle')
+        .data(data.nodes)
+        .enter()
+        .append('circle')
+        .attr('class', 'node')
+        .attr('r', 5) 
+        .on('click', handleNodeClick);
+        
+      // Define functions for updating node and link positions
+      function ticked() {
+        link
+          .attr('x1', (d) => d.source.x)
+          .attr('y1', (d) => d.source.y)
+          .attr('x2', (d) => d.target.x)
+          .attr('y2', (d) => d.target.y);
+
+        node
+          .attr('cx', (d) => d.x)
+          .attr('cy', (d) => d.y);
+
+          // Create a D3 selection for the tooltip
+      const tooltip = d3.select('#tooltip');
+
+      // Add event listeners for node hover
+      node.on('mouseover', (event, d) => {
+        tooltip.transition()
+          .duration(200)
+          .style('opacity', 0.9);
+        tooltip.html(d.id) // Assuming 'id' contains the label text
+          .style('left', (event.pageX + 5) + 'px')
+          .style('top', (event.pageY - 28) + 'px');
+      });
+
+      node.on('mouseout', () => {
+        tooltip.transition()
+          .duration(500)
+          .style('opacity', 0);
+      });
+
+            }
+
+            // Register the 'ticked' function to update positions during simulation
+            simulation.on('tick', ticked);
+          });
+
+          const zoom = d3.zoom()
+            .scaleExtent([0.1, 10]) // Adjust the min and max zoom levels as needed
+            .on('zoom', () => {
+              svg.attr('transform', d3.event.transform);
+            });
+            svg.call(zoom);
+            node.call(zoom);
+            link.call(zoom);
+
+
+            // Define a variable to store the currently focused node (initialize as null)
+        let focusedNode = null;
+
+      // Function to handle node click events
+      function handleNodeClick(event, d) {
+        if (focusedNode === d) {
+          // If the clicked node is already focused, remove focus
+          focusedNode = null;
+          node.classed('focused', false);
+          link.classed('focused', false);
+        } else {
+          // Otherwise, set the clicked node as the focused node
+          focusedNode = d;
+
+          // Apply the "focused" class to nodes and links based on connections
+          node.classed('focused', (n) => isConnected(n, focusedNode));
+          link.classed('focused', (l) => l.source === focusedNode || l.target === focusedNode);
+        }
+
+        // Update the tooltip content here
+        updateTooltipContent(focusedNode);
       }
 
-      .nodes circle {
-        stroke: #fff;
-        stroke-width: 1.5;
-      }
-    </style>
-  </head>
-  <body>
-    <svg id="d3example"></svg>
-    <script>
-      const width = 800;
-      const height = 800;
-      var svg = d3
-        .select("#d3example")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height);
+      // Add click event listener to nodes
+      node.on('click', handleNodeClick);
 
-      var exampleData = [
-        { name: "A" },
-        { name: "B" },
-        { name: "C" },
-        { name: "D" },
-      ];
-      var node = svg.append("g").selectAll("nodes").data(exampleData).enter();
-      var circles = node
-        .append("circle")
-        .attr("cx", () => {
-          return Math.random() * width;
-        })
-        .attr("cy", () => {
-          return Math.random() * height;
-        })
-        .attr("r", 40)
-        .style("fill", "rgb(239, 192, 80)");
-    </script>
-  </body>
+      function updateTooltipContent(focusedNode) {
+        if (focusedNode) {
+          // Display tooltip content with information about the focused node and its connections
+          tooltip.html(`
+            <strong>${focusedNode.id}</strong>
+            <ul>
+              ${data.links
+                .filter((l) => l.source === focusedNode || l.target === focusedNode)
+                .map((l) => `<li>${l.source.id} ➜ ${l.target.id}</li>`)
+                .join('')}
+            </ul>
+          `);
+
+          // Position and show the tooltip
+          tooltip.style('left', `${d3.event.pageX}px`)
+            .style('top', `${d3.event.pageY}px`)
+            .style('opacity', 1);
+        } else {
+          // Hide the tooltip if no node is focused
+          tooltip.style('opacity', 0);
+        }
+      }
+
+      // Function to check if two nodes are connected
+      function isConnected(a, b) {
+        return (
+          links.some((l) => l.source === a && l.target === b) ||
+          links.some((l) => l.source === b && l.target === a)
+        );
+      }
+
+      // Function to show node connections in the tooltip
+      function showNodeConnections(nodeData) {
+        const connectedNodes = nodes.filter((n) => isConnected(n, nodeData));
+
+        // Update the tooltip content with connected node names
+        const tooltipContent = connectedNodes.map((n) => n.id).join(', ');
+
+        // Display the tooltip with the updated content
+        tooltip.html(`<b>Connections:</b> <br>${tooltipContent}`);
+      }
+  </script>
+</body>
 </html>
