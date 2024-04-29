@@ -56,12 +56,16 @@ const analyzeFile = (filePath: string) => {
         path.node.name &&
         path.container &&
         !Array.isArray(path.container) &&
+        /^[A-Z]/.test(path.node.name) && 
+        !(path.node.name.includes(".test.")) &&
         path.container.type === "JSXOpeningElement"
       ) {
         let componentName = path.node.name;
+
         if (!components[componentName]) {
           components[componentName] = { defined: [], used: [] };
         }
+
         components[componentName].used.push(fileName);
       }
     },
@@ -91,7 +95,7 @@ const walkDir = (dir: string) => {
 
     if (stat.isDirectory()) {
       walkDir(filePath);
-    } else if (stat.isFile() && filePath.endsWith(".tsx")) {
+    } else if (stat.isFile() && filePath.endsWith(".tsx") && !filePath.includes(".test.")) {
       analyzeFile(filePath);
     }
   }
@@ -105,19 +109,6 @@ if (!projectPath) {
 }
 
 walkDir(projectPath);
-
-/**
- * results format:
- *{
- * nodes: [{id: string, group: number}, ...],
- *  links: [{source: string, target: string}, ...}]
- *  }
- */
-
-interface Link {
-  source: string;
-  target: string;
-}
 
 const parseResults = (results: Record<string, NodeInfo>) => {
   const nodes = [

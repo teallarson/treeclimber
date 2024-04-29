@@ -39,9 +39,7 @@
     </div>
   
   <script>
-    console.log('D3.js code is running');
-    d3.json('./treeclimbgraphdata.json').then((data) => {
-      console.log('Data loaded:', data);
+      d3.json('./treeclimbgraphdata.json').then((data) => {
       // Select the container element
       const container = d3.select('#network-graph');
 
@@ -111,16 +109,21 @@
             .on('zoom', () => {
               svg.attr('transform', d3.event.transform);
             });
-            svg.call(zoom);
+            
+            container.call(zoom);
             node.call(zoom);
             link.call(zoom);
 
 
-            // Define a variable to store the currently focused node (initialize as null)
-        let focusedNode = null;
+        // Define a variable to store the currently focused node (initialize as null)
+      let focusedNode = null;
 
       // Function to handle node click events
       function handleNodeClick(event, d) {
+        console.log({event});
+        console.log({d});
+        console.log({focusedNode});
+        
         if (focusedNode === d) {
           // If the clicked node is already focused, remove focus
           focusedNode = null;
@@ -140,7 +143,7 @@
       }
 
       // Add click event listener to nodes
-      node.on('click', handleNodeClick);
+      node.on('focus', handleNodeClick);
 
       function updateTooltipContent(focusedNode) {
         if (focusedNode) {
